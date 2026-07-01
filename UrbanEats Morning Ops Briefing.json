@@ -1,0 +1,223 @@
+{
+  "name": "UrbanEats Morning Ops Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 7 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        112
+      ],
+      "id": "6f6eba46-8d74-452f-80ed-35377339d3e1"
+    },
+    {
+      "parameters": {
+        "url": "https://your-url.com/urbaneats_delivery_orders.csv",
+        "responseFormat": "string",
+        "options": {}
+      },
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        112
+      ],
+      "id": "006fa9ff-9e45-4f87-8f5e-76c8cb45f8bc"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n// Get the response from HTTP Request node\nconst response = $input.first().json;\nconst bodyText = response.body || response.data || JSON.stringify(response);\n\nfunction parseCSV(str) {\n  const lines = str.trim().split('\\n');\n  const headers = lines[0].split(',').map(h => h.trim().replace(/\"/g, ''));\n  return lines.slice(1).map(line => {\n    const vals = line.split(',');\n    const obj = {};\n    headers.forEach((h, i) => obj[h] = vals[i] ? vals[i].trim().replace(/\"/g, '') : '');\n    return obj;\n  });\n}\n\nconst rows = parseCSV(bodyText);\n\nconst total = rows.length;\nconst cancelled = rows.filter(r => r.order_status === 'Cancelled').length;\nconst cancellation_rate = total > 0 ? cancelled / total : 0;\n\nconst delTimes = rows\n  .map(r => parseFloat(r.delivery_time_mins))\n  .filter(v => !isNaN(v));\nconst avg_delivery_time = delTimes.length > 0\n  ? delTimes.reduce((a, b) => a + b, 0) / delTimes.length\n  : 0;\n\nconst zoneComplaints = {};\nrows.forEach(r => {\n  const z = r.delivery_zone;\n  const c = parseInt(r.customer_complaints) || 0;\n  zoneComplaints[z] = (zoneComplaints[z] || 0) + c;\n});\nconst worst_zone = Object.entries(zoneComplaints)\n  .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';\n\nconst restCancel = {};\nrows.forEach(r => {\n  if (r.order_status === 'Cancelled') {\n    restCancel[r.restaurant_name] = (restCancel[r.restaurant_name] || 0) + 1;\n  }\n});\nconst worst_restaurant = Object.entries(restCancel)\n  .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';\n\nconst riskPairs = {};\nrows.filter(r => r.cancel_risk === 'high').forEach(r => {\n  const key = `${r.restaurant_name} - ${r.delivery_zone}`;\n  riskPairs[key] = (riskPairs[key] || 0) + 1;\n});\nconst top_risk_pair = Object.entries(riskPairs)\n  .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';\n\nconst today = new Date().toISOString().slice(0, 10);\n\nreturn [{\n  json: {\n    total_orders: total,\n    cancellation_rate: Math.round(cancellation_rate * 1000) / 1000,\n    avg_delivery_time: Math.round(avg_delivery_time * 10) / 10,\n    worst_zone,\n    worst_restaurant,\n    top_risk_pair,\n    date: today\n  }\n}];"
+      },
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        112
+      ],
+      "id": "0ac820bd-cf15-4b16-ae58-f96b35e64b77"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"cancellationRate\"]}}",
+              "operation": "largerEqual",
+              "value2": 0.2
+            }
+          ]
+        }
+      },
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        112
+      ],
+      "id": "bf5901f5-cedf-4b62-844c-54d9fdab3db9"
+    },
+    {
+      "parameters": {
+        "channel": "#ops-alerts",
+        "text": "=🔴 *ALERT — High Cancellation Rate!*\nDate: {{$json[\"date\"]}}\nTotal Orders: {{$json[\"totalOrders\"]}}\nCancellation Rate: {{$json[\"cancellationRate\"] * 100}}%\nWorst Restaurant: {{$json[\"worstRestaurant\"]}}\nWorst Zone: {{$json[\"worstZone\"]}}\nTop Risk: {{$json[\"topAlertText\"].substring(0,120)}}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "name": "Slack Red Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "19b71755-d1d4-4687-8548-bb4133afc77b"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#ops-alerts",
+        "text": "=✅ *All Clear — Daily Ops Summary*\nDate: {{$json[\"date\"]}}\nTotal Orders: {{$json[\"totalOrders\"]}}\nCancellation Rate: {{$json[\"cancellationRate\"] * 100}}%\nAvg Delivery Time: {{$json[\"avgDeliveryTime\"]}} mins\nAll metrics within normal range.",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "name": "Slack Green Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ],
+      "id": "31add4cf-d04e-4983-ae23-6797206cad96",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x10KQ0tzRc1pN5LO",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "subject": "=UrbanEats Daily Ops Brief — {{$json[\"date\"]}}",
+        "message": "=🔴 RED ALERT — UrbanEats Daily Ops Brief  Date: {{$json[\"date\"]}} Total Orders: {{$json[\"total_orders\"]}} Cancellation Rate: {{$json[\"cancellation_rate\"] * 100}}% Worst Restaurant: {{$json[\"worst_restaurant\"]}} Worst Zone: {{$json[\"worst_zone\"]}} Top Cancel-Risk Hotspot: {{$json[\"top_risk_pair\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        208,
+        112
+      ],
+      "id": "c850e8d1-f125-487e-9329-f54d38a97aaf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eZGoqzIqLKOM99cs",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Slack Red Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack Green Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Red Alert": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Green Summary": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "de53210b-1a92-4630-a562-e5b700f85fe3",
+  "meta": {
+    "instanceId": "f9b6056959e564ebfd4c5cd551cf78c99d28fdde392ab63d68ada3e73a3500f4"
+  },
+  "nodeGroups": [],
+  "id": "dnFb9utXkIo4C3I4",
+  "tags": []
+}

@@ -1,0 +1,247 @@
+
+<html><head><title>UrbanEats GX Report</title></head>
+<body>
+<h1>Great Expectations Validation Report — UrbanEats</h1>
+<h2>Success: True</h2>
+<h3>Statistics</h3>
+<p>Evaluated: 6</p>
+<p>Passed: 6</p>
+<p>Failed: 0</p>
+<p>Success %: 100.0</p>
+<pre>{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "expectation_config": {
+        "type": "expect_column_values_to_not_be_null",
+        "kwargs": {
+          "batch_id": "urbaneats_datasource-urbaneats",
+          "column": "order_id"
+        },
+        "meta": {},
+        "id": "7dd7a1e8-df9c-4199-a98b-c228069f8aa1",
+        "severity": "critical"
+      },
+      "result": {
+        "element_count": 150,
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "partial_unexpected_list": [],
+        "partial_unexpected_counts": [],
+        "partial_unexpected_index_list": []
+      },
+      "meta": {},
+      "exception_info": {
+        "raised_exception": false,
+        "exception_traceback": null,
+        "exception_message": null
+      }
+    },
+    {
+      "success": true,
+      "expectation_config": {
+        "type": "expect_column_values_to_be_unique",
+        "kwargs": {
+          "batch_id": "urbaneats_datasource-urbaneats",
+          "column": "order_id"
+        },
+        "meta": {},
+        "id": "7221b3ce-a284-4fde-8528-243d2cb45771",
+        "severity": "critical"
+      },
+      "result": {
+        "element_count": 150,
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "partial_unexpected_list": [],
+        "missing_count": 0,
+        "missing_percent": 0.0,
+        "unexpected_percent_total": 0.0,
+        "unexpected_percent_nonmissing": 0.0,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_index_list": []
+      },
+      "meta": {},
+      "exception_info": {
+        "raised_exception": false,
+        "exception_traceback": null,
+        "exception_message": null
+      }
+    },
+    {
+      "success": true,
+      "expectation_config": {
+        "type": "expect_column_values_to_be_between",
+        "kwargs": {
+          "batch_id": "urbaneats_datasource-urbaneats",
+          "column": "delivery_time_mins",
+          "min_value": 10.0,
+          "max_value": 120.0
+        },
+        "meta": {},
+        "id": "a8a8c7a7-5c46-4841-860b-153958e04a40",
+        "severity": "critical"
+      },
+      "result": {
+        "element_count": 150,
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "partial_unexpected_list": [],
+        "missing_count": 6,
+        "missing_percent": 4.0,
+        "unexpected_percent_total": 0.0,
+        "unexpected_percent_nonmissing": 0.0,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_index_list": []
+      },
+      "meta": {},
+      "exception_info": {
+        "raised_exception": false,
+        "exception_traceback": null,
+        "exception_message": null
+      }
+    },
+    {
+      "success": true,
+      "expectation_config": {
+        "type": "expect_column_values_to_be_between",
+        "kwargs": {
+          "batch_id": "urbaneats_datasource-urbaneats",
+          "column": "rider_rating",
+          "min_value": 1.0,
+          "max_value": 5.0
+        },
+        "meta": {},
+        "id": "4af3ef5e-bc41-477e-aa01-cf04105769db",
+        "severity": "critical"
+      },
+      "result": {
+        "element_count": 150,
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "partial_unexpected_list": [],
+        "missing_count": 6,
+        "missing_percent": 4.0,
+        "unexpected_percent_total": 0.0,
+        "unexpected_percent_nonmissing": 0.0,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_index_list": []
+      },
+      "meta": {},
+      "exception_info": {
+        "raised_exception": false,
+        "exception_traceback": null,
+        "exception_message": null
+      }
+    },
+    {
+      "success": true,
+      "expectation_config": {
+        "type": "expect_column_values_to_be_in_set",
+        "kwargs": {
+          "batch_id": "urbaneats_datasource-urbaneats",
+          "column": "order_status",
+          "value_set": [
+            "Delivered",
+            "Cancelled",
+            "Delayed",
+            "Refunded"
+          ]
+        },
+        "meta": {},
+        "id": "a17cbd04-36c3-4e7e-bc85-b763e9bf44e3",
+        "severity": "critical"
+      },
+      "result": {
+        "element_count": 150,
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "partial_unexpected_list": [],
+        "missing_count": 0,
+        "missing_percent": 0.0,
+        "unexpected_percent_total": 0.0,
+        "unexpected_percent_nonmissing": 0.0,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_index_list": []
+      },
+      "meta": {},
+      "exception_info": {
+        "raised_exception": false,
+        "exception_traceback": null,
+        "exception_message": null
+      }
+    },
+    {
+      "success": true,
+      "expectation_config": {
+        "type": "expect_column_values_to_be_between",
+        "kwargs": {
+          "batch_id": "urbaneats_datasource-urbaneats",
+          "column": "order_value",
+          "min_value": 50.0,
+          "max_value": 5000.0
+        },
+        "meta": {},
+        "id": "c4884364-0884-44ee-8ae1-7133a79f2235",
+        "severity": "critical"
+      },
+      "result": {
+        "element_count": 150,
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "partial_unexpected_list": [],
+        "missing_count": 0,
+        "missing_percent": 0.0,
+        "unexpected_percent_total": 0.0,
+        "unexpected_percent_nonmissing": 0.0,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_index_list": []
+      },
+      "meta": {},
+      "exception_info": {
+        "raised_exception": false,
+        "exception_traceback": null,
+        "exception_message": null
+      }
+    }
+  ],
+  "suite_name": "urbaneats_suite",
+  "suite_parameters": {},
+  "statistics": {
+    "evaluated_expectations": 6,
+    "successful_expectations": 6,
+    "unsuccessful_expectations": 0,
+    "success_percent": 100.0
+  },
+  "meta": {
+    "great_expectations_version": "1.18.1",
+    "batch_spec": {
+      "batch_data": "PandasDataFrame"
+    },
+    "batch_markers": {
+      "ge_load_time": "20260614T182314.273594Z",
+      "pandas_data_fingerprint": "e6ac4917d546d2b3d94ac009385b8204"
+    },
+    "active_batch_definition": {
+      "datasource_name": "urbaneats_datasource",
+      "data_connector_name": "fluent",
+      "data_asset_name": "urbaneats",
+      "batch_identifiers": {
+        "dataframe": "<DATAFRAME>"
+      }
+    },
+    "validation_id": "7d6034f7-27d7-4c85-933e-686015dc334c",
+    "checkpoint_id": null,
+    "run_id": {
+      "run_name": null,
+      "run_time": "2026-06-14T18:23:14.592251+00:00"
+    },
+    "validation_time": "2026-06-14T18:23:14.592251+00:00",
+    "batch_parameters": {
+      "dataframe": "<DATAFRAME>"
+    }
+  },
+  "id": null
+}</pre>
+</body></html>

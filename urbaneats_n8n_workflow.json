@@ -1,0 +1,193 @@
+{
+  "name": "UrbanEats Morning Ops Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "30 7 * * *" }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://YOUR_CSV_HOSTING_URL/urbaneats_delivery_orders.csv",
+        "options": {}
+      },
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const csv = $input.first().json.data || $input.first().binary?.data;
+const text = items[0].json.data || items[0].json.body || items[0].json;
+const raw = typeof text === 'string' ? text : items[0].json.toString();
+
+function parseCSV(str) {
+  const lines = str.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = vals[i] ? vals[i].trim() : '');
+    return obj;
+  });
+}
+
+const rows = parseCSV(raw);
+
+const yesterday = new Date();
+yesterday.setDate(yesterday.getDate() - 1);
+const yStr = yesterday.toISOString().slice(0,10);
+
+const todaysOrders = rows.filter(r => r.order_date === yStr);
+const dataset = todaysOrders.length > 0 ? todaysOrders : rows;
+
+const total = dataset.length;
+const cancelled = dataset.filter(r => r.order_status === 'Cancelled').length;
+const cancellation_rate = total > 0 ? cancelled / total : 0;
+
+const delTimes = dataset
+  .map(r => parseFloat(r.delivery_time_mins))
+  .filter(v => !isNaN(v));
+const avg_delivery_time = delTimes.length > 0
+  ? delTimes.reduce((a,b) => a+b, 0) / delTimes.length
+  : 0;
+
+const zoneComplaints = {};
+dataset.forEach(r => {
+  const z = r.delivery_zone;
+  const c = parseInt(r.customer_complaints) || 0;
+  zoneComplaints[z] = (zoneComplaints[z] || 0) + c;
+});
+const worst_zone = Object.entries(zoneComplaints)
+  .sort((a,b) => b[1]-a[1])[0]?.[0] || 'N/A';
+
+const restCancel = {};
+dataset.forEach(r => {
+  if (r.order_status === 'Cancelled') {
+    restCancel[r.restaurant_name] = (restCancel[r.restaurant_name] || 0) + 1;
+  }
+});
+const worst_restaurant = Object.entries(restCancel)
+  .sort((a,b) => b[1]-a[1])[0]?.[0] || 'N/A';
+
+const highRiskRows = dataset.filter(r => r.cancel_risk === 'high' || r.cancel_risk === 'True' || r.cancel_risk === 'true');
+const riskPairs = {};
+highRiskRows.forEach(r => {
+  const key = `${r.restaurant_name} - ${r.delivery_zone}`;
+  riskPairs[key] = (riskPairs[key] || 0) + 1;
+});
+const top_risk_pair = Object.entries(riskPairs)
+  .sort((a,b) => b[1]-a[1])[0]?.[0] || 'N/A';
+
+const today = new Date().toISOString().slice(0,10);
+
+return [{
+  json: {
+    total_orders: total,
+    cancellation_rate: cancellation_rate,
+    avg_delivery_time: Math.round(avg_delivery_time * 10) / 10,
+    worst_zone: worst_zone,
+    worst_restaurant: worst_restaurant,
+    top_risk_pair: top_risk_pair,
+    date: today
+  }
+}];"
+      },
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.cancellation_rate }}",
+              "rightValue": 0.20,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": "ops-alerts",
+        "text": "=🔴 RED ALERT — UrbanEats Ops Brief ({{ $json.date }})\nCancellation rate: {{ Math.round($json.cancellation_rate * 1000) / 10 }}% (above 20% threshold)\nWorst restaurant: {{ $json.worst_restaurant }}\nWorst zone (complaints): {{ $json.worst_zone }}\nTop cancel-risk hotspot: {{ $json.top_risk_pair }}\nAI alert: {{ ($json.ai_alert_text || '').substring(0, 120) }}",
+        "otherOptions": {}
+      },
+      "name": "Slack Red Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": "ops-alerts",
+        "text": "=🟢 All clear — UrbanEats Ops Brief ({{ $json.date }})\nTotal orders: {{ $json.total_orders }}\nCancellation rate: {{ Math.round($json.cancellation_rate * 1000) / 10 }}% (within threshold)\nAvg delivery time: {{ $json.avg_delivery_time }} mins\nZone with most complaints: {{ $json.worst_zone }}",
+        "otherOptions": {}
+      },
+      "name": "Slack Green Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {
+        "sendTo": "ops-manager@urbaneats.com",
+        "subject": "=UrbanEats Daily Ops Brief — {{ $json.date }}",
+        "message": "=🔴 RED ALERT\nCancellation rate: {{ Math.round($json.cancellation_rate * 1000) / 10 }}% (above 20% threshold)\nWorst restaurant: {{ $json.worst_restaurant }}\nWorst zone (complaints): {{ $json.worst_zone }}\nTop cancel-risk hotspot: {{ $json.top_risk_pair }}\nAI alert: {{ ($json.ai_alert_text || '').substring(0, 120) }}",
+        "options": {}
+      },
+      "name": "Gmail Red",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "sendTo": "ops-manager@urbaneats.com",
+        "subject": "=UrbanEats Daily Ops Brief — {{ $json.date }}",
+        "message": "=🟢 All clear\nTotal orders: {{ $json.total_orders }}\nCancellation rate: {{ Math.round($json.cancellation_rate * 1000) / 10 }}%\nAvg delivery time: {{ $json.avg_delivery_time }} mins\nZone with most complaints: {{ $json.worst_zone }}",
+        "options": {}
+      },
+      "name": "Gmail Green",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1340, 420]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]] },
+    "HTTP Request": { "main": [[{ "node": "Code", "type": "main", "index": 0 }]] },
+    "Code": { "main": [[{ "node": "If", "type": "main", "index": 0 }]] },
+    "If": {
+      "main": [
+        [{ "node": "Slack Red Alert", "type": "main", "index": 0 }],
+        [{ "node": "Slack Green Summary", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack Red Alert": { "main": [[{ "node": "Gmail Red", "type": "main", "index": 0 }]] },
+    "Slack Green Summary": { "main": [[{ "node": "Gmail Green", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "urbaneats-assignment2" }
+}
